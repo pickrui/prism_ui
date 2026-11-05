@@ -192,4 +192,30 @@ void main() {
 
     expect(moves, [(0, 2)]);
   });
+
+  testWidgets('fractional padding does not scroll a new variable-height list', (
+    tester,
+  ) async {
+    tester.view
+      ..physicalSize = const Size(1080, 2400)
+      ..devicePixelRatio = 2.75;
+    addTearDown(tester.view.reset);
+    final controller = ScrollController();
+    addTearDown(controller.dispose);
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: PrismListView(
+          controller: controller,
+          padding: const EdgeInsets.only(top: 60 + 96 / 2.75),
+          itemCount: 10,
+          itemBuilder: (_, i) =>
+              SizedBox(height: i.isEven ? 90 : 110, child: Text('row $i')),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(controller.position.maxScrollExtent, greaterThan(0));
+    expect(controller.offset, 0);
+  });
 }

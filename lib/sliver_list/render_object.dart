@@ -285,9 +285,10 @@ class RenderSuperSliverList extends RenderSliverMultiBoxAdaptor {
     final initialExtent = _totalExtent();
 
     final viewportIsScrolled =
-        (constraints.viewportMainAxisExtent -
-                constraints.remainingPaintExtent) <
-            constraints.precedingScrollExtent ||
+        constraints.precedingScrollExtent -
+                (constraints.viewportMainAxisExtent -
+                    constraints.remainingPaintExtent) >
+            precisionErrorTolerance ||
         constraints.scrollOffset > 0;
 
     final anchoredAtEnd =

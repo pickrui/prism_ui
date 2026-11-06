@@ -1246,6 +1246,7 @@ class _PopupAnchorTrackerState extends State<_PopupAnchorTracker> {
       if (!mounted) {
         return;
       }
+      _scheduleSync();
       final anchor = widget.anchorOf();
       if (anchor == null || anchor == _anchor) {
         return;

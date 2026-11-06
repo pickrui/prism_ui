@@ -121,7 +121,10 @@ class _KeyedAnimatedListState<T> extends State<KeyedAnimatedList<T>>
     final newKeys = {for (final item in items) widget.keyOf(item)};
     final inserted = newKeys.where((key) => !oldByKey.containsKey(key));
     final removed = _entries.where((entry) => !newKeys.contains(entry.key));
-    if (inserted.length + removed.length > _maxAnimatedChanges) {
+    if (widget.duration == Duration.zero ||
+        MediaQuery.disableAnimationsOf(context) ||
+        !TickerMode.valuesOf(context).enabled ||
+        inserted.length + removed.length > _maxAnimatedChanges) {
       _replaceItems(items);
       return;
     }
@@ -175,10 +178,17 @@ class _KeyedAnimatedListState<T> extends State<KeyedAnimatedList<T>>
       _Phase.entering => _entering,
       _Phase.leaving => _leaving,
     };
+    if (entry.phase == _Phase.leaving) {
+      row = IgnorePointer(
+        child: ExcludeFocus(child: ExcludeSemantics(child: row)),
+      );
+    }
     return _SlideOnMove(
       key: ValueKey(entry.key),
       generation: _generation,
-      duration: widget.duration,
+      duration: MediaQuery.disableAnimationsOf(context)
+          ? Duration.zero
+          : widget.duration,
       child: _RowPresence(animation: animation, child: row),
     );
   }
@@ -361,7 +371,9 @@ class _RenderSlideOnMove extends RenderProxyBox {
   void _settlePendingMove(double? current) {
     final previous = _previousOffset;
     _previousOffset = null;
-    if (previous == null || current == null) {
+    if (_controller.duration == Duration.zero ||
+        previous == null ||
+        current == null) {
       return;
     }
     final delta = previous - current + _translation;

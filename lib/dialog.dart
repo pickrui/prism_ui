@@ -372,6 +372,9 @@ class AlertDialog extends StatelessWidget {
   /// The last action destroys data: red on the plain fill, as in UIKit.
   final bool destructive;
 
+  /// In place of an alert's width, for content that needs more room.
+  final double? maxWidth;
+
   const AlertDialog({
     super.key,
     required this.title,
@@ -381,6 +384,7 @@ class AlertDialog extends StatelessWidget {
     this.padding,
     this.hasFields = false,
     this.destructive = false,
+    this.maxWidth,
   });
 
   @override
@@ -432,9 +436,11 @@ class AlertDialog extends StatelessWidget {
                     container: true,
                     child: Container(
                       constraints: BoxConstraints(
-                        maxWidth: padding == null
-                            ? _alertWidth - contentInset * 2
-                            : _contentMaxWidth,
+                        maxWidth:
+                            maxWidth ??
+                            (padding == null
+                                ? _alertWidth - contentInset * 2
+                                : _contentMaxWidth),
                       ),
                       width: double.infinity,
                       child: SingleChildScrollView(

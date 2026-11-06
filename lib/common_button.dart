@@ -608,6 +608,7 @@ class _StyledButtonState extends State<_StyledButton> {
   }
 
   void _syncStates() {
+    if (widget.onPressed == null) _states.update(WidgetState.pressed, false);
     _states
       ..update(WidgetState.disabled, widget.onPressed == null)
       ..update(WidgetState.selected, widget.selected);

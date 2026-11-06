@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 import 'package:prism_ui/l10n.dart';
 import 'package:prism_ui/color.dart';
 import 'package:prism_ui/drag_back.dart';
+import 'package:prism_ui/inherited.dart';
 import 'package:prism_ui/shape.dart';
 import 'package:prism_ui/sheet_navigator.dart';
 import 'package:prism_ui/surface.dart';
@@ -324,11 +325,14 @@ class ModalSideSheetRoute<T> extends PopupRoute<T>
 
   final String? barrierOnTapHint;
 
+  final _dismissHandler = ValueNotifier<SheetDismissHandler?>(null);
+
   final ValueNotifier<EdgeInsets> _clipDetailsNotifier =
       ValueNotifier<EdgeInsets>(EdgeInsets.zero);
 
   @override
   void dispose() {
+    _dismissHandler.dispose();
     _clipDetailsNotifier.dispose();
     super.dispose();
   }
@@ -380,7 +384,19 @@ class ModalSideSheetRoute<T> extends PopupRoute<T>
       ),
     );
 
-    return ElevatedSurfaceTheme(child: content);
+    return SheetDismissScope(
+      handler: _dismissHandler,
+      child: ElevatedSurfaceTheme(child: content),
+    );
+  }
+
+  void _dismiss() {
+    final handler = _dismissHandler.value;
+    if (handler != null) {
+      handler();
+    } else {
+      navigator?.maybePop();
+    }
   }
 
   @override
@@ -400,6 +416,7 @@ class ModalSideSheetRoute<T> extends PopupRoute<T>
         barrierSemanticsDismissible: semanticsDismissible,
         clipDetailsNotifier: _clipDetailsNotifier,
         semanticsOnTapHint: barrierOnTapHint,
+        onDismiss: _dismiss,
       );
     } else {
       return ModalBarrier(
@@ -408,6 +425,7 @@ class ModalSideSheetRoute<T> extends PopupRoute<T>
         barrierSemanticsDismissible: semanticsDismissible,
         clipDetailsNotifier: _clipDetailsNotifier,
         semanticsOnTapHint: barrierOnTapHint,
+        onDismiss: _dismiss,
       );
     }
   }

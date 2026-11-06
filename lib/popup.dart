@@ -193,11 +193,14 @@ class AnchoredPopupRoute<T> extends PopupRoute<T> {
   bool get barrierDismissible => true;
 
   @override
-  Duration get transitionDuration => _openDuration;
+  Duration get transitionDuration =>
+      navigator?.context.motionDuration(_openDuration) ?? _openDuration;
 
   @override
-  Duration get reverseTransitionDuration =>
-      sourceImage == null ? _shrinkDuration : _dismissDuration;
+  Duration get reverseTransitionDuration {
+    final duration = sourceImage == null ? _shrinkDuration : _dismissDuration;
+    return navigator?.context.motionDuration(duration) ?? duration;
+  }
 
   // A controller reverses over the share of its duration it had run, so a
   // popup closed while opening would rush the return its morph times in full.
@@ -2183,6 +2186,10 @@ class _PopupMenuState extends State<PopupMenu>
   }
 
   TickerFuture _springTo(double target, SpringDescription spring) {
+    if (context.disableAnimations) {
+      _unfold.value = target;
+      return TickerFuture.complete();
+    }
     return _unfold.animateWith(
       SpringSimulation(spring, _unfold.value, target, _unfold.velocity),
     );

@@ -154,10 +154,16 @@ Rect _lensRect({
 /// reads no elapsed time, so retargeting it on every pointer move holds the
 /// value still for as long as the finger keeps moving.
 class _Spring extends ChangeNotifier implements ValueListenable<double> {
-  _Spring(TickerProvider vsync, this._value, {this.rest = 1e-3}) {
+  _Spring(
+    TickerProvider vsync,
+    this._value,
+    this.reduceMotion, {
+    this.rest = 1e-3,
+  }) {
     _ticker = vsync.createTicker(_tick);
   }
 
+  final bool Function() reduceMotion;
   final double rest;
 
   late final Ticker _ticker;
@@ -185,6 +191,10 @@ class _Spring extends ChangeNotifier implements ValueListenable<double> {
   }
 
   void springTo(double target, SpringDescription spring) {
+    if (reduceMotion()) {
+      jumpTo(target);
+      return;
+    }
     _simulation = SpringSimulation(
       spring,
       _value,
@@ -216,7 +226,7 @@ class _Spring extends ChangeNotifier implements ValueListenable<double> {
     _now = elapsed.inMicroseconds / Duration.microsecondsPerSecond;
     final simulation = _simulation!;
     final time = _now - _start;
-    if (simulation.isDone(time)) {
+    if (reduceMotion() || simulation.isDone(time)) {
       _value = _target;
       _simulation = null;
       _ticker.stop();
@@ -514,10 +524,10 @@ abstract interface class ElasticPressHandle {
 class _ElasticPressState extends State<ElasticPress>
     with TickerProviderStateMixin
     implements ElasticPressHandle {
-  late final _Spring _lift = _Spring(this, 0);
-  late final _Spring _hover = _Spring(this, 0);
-  late final _Spring _pullX = _Spring(this, 0);
-  late final _Spring _pullY = _Spring(this, 0);
+  late final _Spring _lift = _Spring(this, 0, _reduceMotion);
+  late final _Spring _hover = _Spring(this, 0, _reduceMotion);
+  late final _Spring _pullX = _Spring(this, 0, _reduceMotion);
+  late final _Spring _pullY = _Spring(this, 0, _reduceMotion);
   late final Listenable _motion = Listenable.merge([
     _lift,
     _hover,
@@ -528,6 +538,8 @@ class _ElasticPressState extends State<ElasticPress>
   var _hovers = 0;
   Offset _origin = Offset.zero;
   bool _releasing = false;
+
+  bool _reduceMotion() => MediaQuery.disableAnimationsOf(context);
 
   @override
   void initState() {
@@ -889,15 +901,19 @@ class FloatingNavigationBar extends StatefulWidget {
 
 class _FloatingNavigationBarState extends State<FloatingNavigationBar>
     with TickerProviderStateMixin {
-  late final _Spring _lens = _Spring(this, _selectedIndex.toDouble());
-  late final _Spring _lift = _Spring(this, 0);
-  late final _Spring _hover = _Spring(this, 0);
-  late final _Spring _hoverShow = _Spring(this, 0);
-  late final _Spring _swell = _Spring(this, 0);
-  late final _Spring _stretch = _Spring(this, 0);
-  late final _Spring _jelly = _Spring(this, 0, rest: _jellyRest);
-  late final _Spring _glow = _Spring(this, 0);
-  late final _Spring _glowSpread = _Spring(this, 0);
+  late final _Spring _lens = _Spring(
+    this,
+    _selectedIndex.toDouble(),
+    _reduceMotion,
+  );
+  late final _Spring _lift = _Spring(this, 0, _reduceMotion);
+  late final _Spring _hover = _Spring(this, 0, _reduceMotion);
+  late final _Spring _hoverShow = _Spring(this, 0, _reduceMotion);
+  late final _Spring _swell = _Spring(this, 0, _reduceMotion);
+  late final _Spring _stretch = _Spring(this, 0, _reduceMotion);
+  late final _Spring _jelly = _Spring(this, 0, _reduceMotion, rest: _jellyRest);
+  late final _Spring _glow = _Spring(this, 0, _reduceMotion);
+  late final _Spring _glowSpread = _Spring(this, 0, _reduceMotion);
   final ValueNotifier<LiquidGlassGlow> _touchGlow = ValueNotifier(
     LiquidGlassGlow.none,
   );
@@ -915,6 +931,8 @@ class _FloatingNavigationBarState extends State<FloatingNavigationBar>
   VelocityTracker? _tracker;
   Offset? _cursor;
   final ValueNotifier<double?> _hoverAt = ValueNotifier(null);
+
+  bool _reduceMotion() => MediaQuery.disableAnimationsOf(context);
 
   int get _lastIndex => math.max(0, widget.destinations.length - 1);
 
@@ -943,6 +961,20 @@ class _FloatingNavigationBarState extends State<FloatingNavigationBar>
   @override
   void didUpdateWidget(covariant FloatingNavigationBar oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (!listEquals(
+      oldWidget.destinations.map((item) => item.label).toList(),
+      widget.destinations.map((item) => item.label).toList(),
+    )) {
+      _pointer = null;
+      _tracker = null;
+      _cursor = null;
+      _hoverAt.value = null;
+      _release(commit: false);
+      _glow.springTo(0, _glowOutSpring);
+      _glowSpread.springTo(1, _glowOutSpring);
+      _stretch.springTo(0, _settleSpring);
+      _swell.springTo(0, _settleSpring);
+    }
     _syncParallax();
     _leanContent();
     final rest = _lensRest;
@@ -999,7 +1031,7 @@ class _FloatingNavigationBarState extends State<FloatingNavigationBar>
       _parallax.removeLast().dispose();
     }
     while (_parallax.length < count) {
-      _parallax.add(_Spring(this, 0));
+      _parallax.add(_Spring(this, 0, _reduceMotion));
     }
   }
 
@@ -1121,7 +1153,9 @@ class _FloatingNavigationBarState extends State<FloatingNavigationBar>
   }
 
   void _handlePointerDown(PointerDownEvent event) {
-    if (_pointer != null || event.buttons & kPrimaryButton == 0) {
+    if (widget.destinations.isEmpty ||
+        _pointer != null ||
+        event.buttons & kPrimaryButton == 0) {
       return;
     }
     _pointer = event.pointer;

@@ -473,6 +473,12 @@ class _OpenContainerRoute<T> extends ModalRoute<T>
   @override
   Future<void>? settleDragBack({required bool pops, required Offset velocity}) {
     _updateOpenSnapshot();
+    if (MediaQuery.maybeDisableAnimationsOf(navigator!.context) == true) {
+      if (pops && isCurrent) navigator!.pop();
+      _dragged.value = Offset.zero;
+      controller!.value = pops ? 0 : 1;
+      return null;
+    }
     if (!pops) {
       return followDragBackTo(Offset.zero, _returnSpring);
     }

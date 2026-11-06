@@ -196,13 +196,16 @@ class _NestedPagedSheetState extends State<NestedPagedSheet> {
 
   void _popSheet([Object? result]) => Navigator.of(context).pop(result);
 
-  void _handlePop() {
+  /// A pushed page's own pop scope gets its say before it goes.
+  Future<void> _handlePop() async {
     if (_hasPushedPages) {
-      _navigatorKey.currentState!.pop();
+      await _navigatorKey.currentState!.maybePop();
       return;
     }
     (widget.onExit ?? _close)();
   }
+
+  void _handleClose() => unawaited(_handlePop());
 
   Future<void> _handleDismiss() async {
     final onDismiss = widget.onDismiss;
@@ -226,12 +229,12 @@ class _NestedPagedSheetState extends State<NestedPagedSheet> {
     );
     return PopGuard(
       onPop: (_) async {
-        _handlePop();
+        await _handlePop();
         return false;
       },
       child: sheetProvider.copyWith(
         nestedNavigatorPop: _popSheet,
-        onClose: _handlePop,
+        onClose: _handleClose,
         // A compact sheet's route takes the taps outside it and the drag away.
         child: sheetProvider.type.isCompact
             ? sheet

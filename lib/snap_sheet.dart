@@ -114,7 +114,15 @@ class SnapSheetRoute<T> extends PopupRoute<T>
     _below = previousRoute is SnapSheetRoute ? previousRoute : null;
   }
 
-  Future<void> _dismiss() async {
+  Future<void>? _pendingDismiss;
+
+  /// Taps outside and drags away wait on one decision of a guard.
+  Future<void> _dismiss() =>
+      _pendingDismiss ??= _handleDismiss().whenComplete(() {
+        _pendingDismiss = null;
+      });
+
+  Future<void> _handleDismiss() async {
     final handler = _dismissHandler.value;
     if (handler != null) {
       await handler();
@@ -123,9 +131,17 @@ class SnapSheetRoute<T> extends PopupRoute<T>
     }
   }
 
+  bool get _reduceMotion =>
+      navigator != null &&
+      MediaQuery.maybeDisableAnimationsOf(navigator!.context) == true;
+
   void _drag(double value) => controller!.value = value;
 
   void _restore(double velocity) {
+    if (_reduceMotion) {
+      controller!.value = 1;
+      return;
+    }
     controller!.animateWith(_presentation(1, velocity));
   }
 
@@ -151,9 +167,12 @@ class SnapSheetRoute<T> extends PopupRoute<T>
   }
 
   @override
-  Simulation createSimulation({required bool forward}) {
+  Simulation? createSimulation({required bool forward}) {
     final velocity = forward ? 0.0 : _closingVelocity;
     _closingVelocity = 0;
+    if (_reduceMotion) {
+      return null;
+    }
     return _presentation(forward ? 1 : 0, velocity);
   }
 
@@ -188,7 +207,8 @@ class SnapSheetRoute<T> extends PopupRoute<T>
   }
 
   @override
-  Duration get transitionDuration => const Duration(milliseconds: 500);
+  Duration get transitionDuration =>
+      _reduceMotion ? Duration.zero : const Duration(milliseconds: 500);
 
   @override
   Duration get reverseTransitionDuration => transitionDuration;
@@ -764,8 +784,9 @@ class _SheetModel extends ChangeNotifier {
   void _settleTo(int stop, double velocity) {
     final stops = _stops;
     final offset = _heightIn(stops) - stops[stop];
-    if (offset.abs() < _settleTolerance.distance &&
-        velocity.abs() < _settleTolerance.velocity) {
+    if (route._reduceMotion ||
+        (offset.abs() < _settleTolerance.distance &&
+            velocity.abs() < _settleTolerance.velocity)) {
       _rest(stop);
       return;
     }

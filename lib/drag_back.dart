@@ -139,6 +139,10 @@ mixin DragBackRouteMixin<T> on ModalRoute<T> {
     if (pops && isCurrent) {
       navigator!.pop();
     }
+    if (MediaQuery.maybeDisableAnimationsOf(navigator!.context) == true) {
+      controller.value = target;
+      return null;
+    }
     final goesPastRest = !pops || _dragBackOverdrag.value > 0;
     if (goesPastRest) {
       controller.stop();
@@ -236,6 +240,7 @@ mixin DragBackRouteMixin<T> on ModalRoute<T> {
 
   @override
   void dispose() {
+    _abortDragBack();
     final follower = _follower;
     _follower = null;
     follower?.dispose();
@@ -284,7 +289,9 @@ mixin DragBackRouteMixin<T> on ModalRoute<T> {
     _dragBackHeld = false;
     _follower!.stop();
     final pops = isCurrent
-        ? dragBackPops(_dragBackTranslation, velocity)
+        ? popDisposition != RoutePopDisposition.doNotPop &&
+              !willHandlePopInternally &&
+              dragBackPops(_dragBackTranslation, velocity)
         : !isActive;
     final settled = settleDragBack(pops: pops, velocity: velocity);
     if (settled == null) {
@@ -326,8 +333,8 @@ mixin DragBackRouteMixin<T> on ModalRoute<T> {
     if (!_dragBackActive || navigator == null) {
       return;
     }
-    _follower?.stop();
     _dragBackActive = false;
+    _follower?.stop();
     _dragBackHeld = false;
     _dragBackOverdrag.value = 0;
     _focusBeforeDragBack = null;

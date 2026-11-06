@@ -43,7 +43,15 @@ class FormSheetRoute<T> extends PopupRoute<T>
   VoidCallback get onBarrierDismiss =>
       () => unawaited(_dismiss());
 
-  Future<void> _dismiss() async {
+  Future<void>? _pendingDismiss;
+
+  /// Taps outside wait on one decision of a guard.
+  Future<void> _dismiss() =>
+      _pendingDismiss ??= _handleDismiss().whenComplete(() {
+        _pendingDismiss = null;
+      });
+
+  Future<void> _handleDismiss() async {
     final handler = _dismissHandler.value;
     if (handler != null) {
       await handler();
